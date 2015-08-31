@@ -9,15 +9,31 @@
           throbber,
           editor = ed;
 
-      function showDialog() {
+      function showImageDialog() {
+        showDialog({
+          'title': ed.translate('Insert an image from your computer'),
+          'file_text': ed.translate('Choose an image'),
+          'file_description': ed.translate('Image description')
+        });
+      }
+
+      function showFileDialog() {
+        showDialog({
+          'title': ed.translate('Insert a file from your computer'),
+          'file_text': ed.translate('Choose a file'),
+          'file_description': ed.translate('Link text')
+        });
+      }
+
+      function showDialog(options) {
         win = editor.windowManager.open({
-          title: ed.translate('Insert an image from your computer'),
+          title: options['title'],
           width:  500 + parseInt(editor.getLang('uploadimage.delta_width', 0), 10),
           height: 180 + parseInt(editor.getLang('uploadimage.delta_height', 0), 10),
           body: [
             {type: 'iframe',  url: 'javascript:void(0)'},
-            {type: 'textbox', name: 'file', label: ed.translate('Choose an image'), subtype: 'file'},
-            {type: 'textbox', name: 'alt',  label: ed.translate('Image description')},
+            {type: 'textbox', name: 'file', label: options['file_text'], subtype: 'file'},
+            {type: 'textbox', name: 'alt',  label: options['file_description']},
             {type: 'container', classes: 'error', html: "<p style='color: #b94a48;'>&nbsp;</p>"},
 
             // Trick TinyMCE to add a empty div that "preloads" the throbber image
@@ -26,7 +42,7 @@
           buttons: [
             {
               text: ed.translate('Insert'),
-              onclick: insertImage,
+              onclick: insertFile,
               subtype: 'primary'
             },
             {
@@ -40,7 +56,7 @@
 
         // TinyMCE likes pointless submit handlers
         win.off('submit');
-        win.on('submit', insertImage);
+        win.on('submit', insertFile);
 
         /* WHY DO YOU HATE <form>, TINYMCE!? */
         iframe = win.find("iframe")[0];
@@ -94,7 +110,7 @@
         body.appendChild(form);
       }
 
-      function insertImage() {
+      function insertFile() {
         if(getInputValue("file") == "") {
           return handleError('You must choose a file');
         }
@@ -179,36 +195,46 @@
         var figure = ed.getParam("uploadimage_figure", false);
         var alt_text = getInputValue("alt");
 
-        var imgstr = "<img src='" + json["image"]["url"] + "'";
+        var return_str = "";
 
-        if(default_class != "")
-          imgstr += " class='" + default_class + "'";
+        if (json["image"]) {
+          return_str = "<img src='" + json["image"]["url"] + "'";
 
-        if(json["image"]["height"])
-          imgstr += " height='" + json["image"]["height"] + "'";
-        if(json["image"]["width"])
-          imgstr += " width='"  + json["image"]["width"]  + "'";
+          if(default_class != "")
+            return_str += " class='" + default_class + "'";
 
-        imgstr += " alt='" + alt_text + "'/>";
+          if(json["image"]["height"])
+            return_str += " height='" + json["image"]["height"] + "'";
+          if(json["image"]["width"])
+            return_str += " width='"  + json["image"]["width"]  + "'";
 
-        if(figure) {
-          var figureClass = ed.getParam("uploadimage_figure_class", "figure");
-          var figcaptionClass = ed.getParam("uploadimage_figcaption_class", "figcaption");
+          return_str += " alt='" + alt_text + "'/>";
 
-          var figstr = "<figure";
+          if(figure) {
+            var figureClass = ed.getParam("uploadimage_figure_class", "figure");
+            var figcaptionClass = ed.getParam("uploadimage_figcaption_class", "figcaption");
 
-          if (figureClass !== "")
-            figstr += " class='" + figureClass + "'";
-          figstr += ">" + imgstr;
-          figstr += "<figcaption";
-          if (figcaptionClass != "")
-            figstr += " class='" + figcaptionClass + "'";
-          figstr += ">" + alt_text + "</figcaption>";
-          figstr += "</figure>";
+            var figstr = "<figure";
 
-          return figstr;
+            if (figureClass !== "")
+              figstr += " class='" + figureClass + "'";
+            figstr += ">" + return_str;
+            figstr += "<figcaption";
+            if (figcaptionClass != "")
+              figstr += " class='" + figcaptionClass + "'";
+            figstr += ">" + alt_text + "</figcaption>";
+            figstr += "</figure>";
+
+            return figstr;
+          } else {
+            return return_str;
+          }
         } else {
-          return imgstr;
+          return_str = "<a href='" + json["file"]["url"] + "'>";
+          return_str += alt_text;
+          return_str += "</a>";
+
+          return return_str;
         }
       }
 
@@ -236,7 +262,13 @@
       editor.addButton('uploadimage', {
         tooltip: ed.translate('Insert an image from your computer'),
         icon : 'image',
-        onclick: showDialog
+        onclick: showImageDialog
+      });
+
+      editor.addButton('uploadfile', {
+        tooltip: ed.translate('Insert a file from your computer'),
+        image : '<%= image_path('file.svg') %>',
+        onclick: showFileDialog
       });
 
       // Adds a menu item to the tools menu
@@ -244,10 +276,18 @@
         text: ed.translate('Insert an image from your computer'),
         icon : 'image',
         context: 'insert',
-        onclick: showDialog
+        onclick: showImageDialog
+      });
+
+      editor.addMenuItem('uploadfile', {
+        text: ed.translate('Insert a file from your computer'),
+        image : '<%= image_path('file.svg') %>',
+        context: 'insert',
+        onclick: showFileDialog
       });
     }
   });
 
   tinymce.PluginManager.add('uploadimage', tinymce.plugins.UploadImage);
+  tinymce.PluginManager.add('uploadfile', tinymce.plugins.UploadImage);
 })();
